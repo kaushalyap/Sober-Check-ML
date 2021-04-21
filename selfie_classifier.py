@@ -13,10 +13,11 @@ import numpy as np
 import tensorflow as tf
 import random
 import glob
+from tensorflow import keras
 
 no_samples = 4000
 batch_size = 32
-epochs = 10
+epochs = 80
 
 n_image_rows = 106
 n_image_cols = 106
@@ -30,6 +31,9 @@ def train_selfie_model():
 
     x_train, y_train = prepare_train_set()
 
+    print(len(x_train))
+    print(len(y_train))
+
     x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=0.30, random_state=42)
 
     mean = np.array([0.5, 0.5, 0.5])
@@ -42,7 +46,8 @@ def train_selfie_model():
 
     model = compile_model()
 
-    print(model.summary())
+    model.summary()
+    # keras.utils.plot_model(model, to_file="selfie.png", show_shapes=True, rankdir="LR")
 
     model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
 
@@ -56,8 +61,8 @@ def train_selfie_model():
 
 
 def prepare_train_set():
-    positive_samples = glob.glob('datasets/frontal_faces/train/drunk/*')[0:no_samples]
-    negative_samples = glob.glob('datasets/frontal_faces/train/sober/*')[0:no_samples]
+    positive_samples = glob.glob('datasets/frontal-faces/train/drunk/*')[0:no_samples]
+    negative_samples = glob.glob('datasets/frontal-faces/train/sober/*')[0:no_samples]
     negative_samples = random.sample(negative_samples, len(positive_samples))
     x_train = []
     y_train = []
@@ -97,3 +102,53 @@ def compile_model():
     sgd = optimizers.SGD(lr=.001, momentum=0.9, decay=0.000005, nesterov=False)
     model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
     return model
+
+
+def run_tflite_selfie_model(tflite_file, test_image):
+    interpreter = tf.lite.Interpreter(model_path=str(tflite_file))
+    interpreter.allocate_tensors()
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    print(f'Input Details : {input_details[0]["index"]}')
+    print(f'Input Data : {test_image}')
+
+    interpreter.set_tensor(input_details[0]["index"], test_image)
+    interpreter.invoke()
+    prediction = interpreter.get_tensor(output_details[0]["index"])
+    print(prediction)
+    return 1 if prediction >= 0.5 else 0
+
+
+def testing_tflite_model(sample_type, quantized):
+    converted_model = "models/converted/selfie.tflite"
+    if quantized:
+        converted_model = "models/converted/selfie-quantized.tflite"
+
+    drunk_image_path = "datasets/frontal-faces/remaining/drunk/haar_3_img933LR_noop_addLNp_addGNp_LContrast.png"
+    sober_image_path = "datasets/frontal-faces/remaining/sober/haar_2_img623UR_ABlur_addLNp_MBlur.png"
+    img = io.imread(drunk_image_path)
+    if sample_type == "sober":
+        img = io.imread(sober_image_path)
+
+    resized = resize(img, (106, 106)).astype('float32')
+    test_image = np.expand_dims(resized, axis=0)
+    normalized_image = test_image - 0.5
+
+    print(type(normalized_image))
+    prediction = run_tflite_selfie_model(converted_model, normalized_image)
+    if prediction == 1:
+        print("Drunk")
+    else:
+        print("Sober")
+
+
+def train_convert_model():
+    train_selfie_model()
+    # saved_model_path = "models/saved/selfie-model/"
+    # saved_model_to_tflite(saved_model_path, 'selfie', False)
+
+
+if __name__ == '__main__':
+
+    # train_convert_model()
+    testing_tflite_model("drunk", True)
