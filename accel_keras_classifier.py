@@ -100,13 +100,13 @@ def run_tflite_accel_model(tflite_file, accel_input):
     interpreter.allocate_tensors()
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
-    print(f'Input Details : {input_details}')
-    print(f'Output Details : {output_details[0]["index"]}')
-
+    # print(f'Input Details : {input_details}')
+    # print(f'Output Details : {output_details[0]["index"]}')
+    print(accel_input.shape)
     for feature in FeatureSet:
-        input_data = np.array(accel_input[feature.name], dtype=np.float64).reshape(1, 1)
-        print(f'Input Details : {input_details[feature.value]["index"]}')
-        print(f'Input Data : {input_data}')
+        input_data = np.array(accel_input[feature.name], dtype=np.float32).reshape(1, 1)
+        print(f'Input Details shape : {input_details[feature.value]["shape"]}')
+        print(f'Input Data shape : {input_data.shape}, Input Type : {type(input_data)}')
         interpreter.set_tensor(input_details[feature.value]["index"], input_data)
 
     interpreter.invoke()
@@ -136,4 +136,8 @@ if __name__ == '__main__':
     positive_example = test_df[test_df['label'] == 1].drop(test_df.columns[[0, 1]], axis=1)
     negative_example = test_df[test_df['label'] == 0].drop(test_df.columns[[0, 1]], axis=1)
 
-    prediction = run_tflite_accel_model(converted_model, positive_example)
+    prediction = run_tflite_accel_model(converted_model, negative_example)
+    if prediction == 1:
+        print("Drunk")
+    else:
+        print("Sober")

@@ -109,13 +109,13 @@ def run_tflite_selfie_model(tflite_file, test_image):
     interpreter.allocate_tensors()
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
-    print(f'Input Details : {input_details[0]["index"]}')
-    print(f'Input Data : {test_image}')
+    print(f'Input Details shape : {input_details[0]["shape"]}')
+    print(f'Input Data shape : {test_image.shape}, Data Type : {type(test_image)}')
 
     interpreter.set_tensor(input_details[0]["index"], test_image)
     interpreter.invoke()
     prediction = interpreter.get_tensor(output_details[0]["index"])
-    print(prediction)
+    # print(prediction)
     return 1 if prediction >= 0.5 else 0
 
 
