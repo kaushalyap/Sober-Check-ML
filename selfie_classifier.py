@@ -25,9 +25,9 @@ n_channels = 3
 
 
 def train_selfie_model():
-    random_seed = 1
-    tf.random.set_seed(random_seed)
-    np.random.seed(random_seed)
+    # random_seed = 1
+    # tf.random.set_seed(random_seed)
+    # np.random.seed(random_seed)
 
     x_train, y_train = prepare_train_set()
 

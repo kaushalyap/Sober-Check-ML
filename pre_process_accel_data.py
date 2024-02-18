@@ -165,7 +165,7 @@ if __name__ == '__main__':
     # change_tac_to_label()
     # convert_timestamp_datetime("-at")
     # separate_accel_by_pid()
-    # add_accel_values_to_tac("BK7610-accel.csv", "BK7610_clean_TAC-labeled.csv")
+    add_accel_values_to_tac("BK7610-accel.csv", "BK7610_clean_TAC-labeled.csv")
     # add_column_names()
 
     # renaming columns names

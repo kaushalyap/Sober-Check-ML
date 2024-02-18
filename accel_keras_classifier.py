@@ -6,6 +6,7 @@ from tensorflow.keras import layers
 from tensorflow.keras.layers.experimental.preprocessing import Normalization
 from accel_features import FeatureSet
 import numpy as np
+
 from convert_to_tflite import saved_model_to_tflite
 
 
@@ -62,7 +63,6 @@ def encode_numerical_feature(feature, name, dataset):
 
 
 def prepare_inputs():
-    # Numerical features
     all_inputs = []
     for feature in FeatureSet:
         input = keras.Input(shape=(1,), name=feature.name)
@@ -89,7 +89,7 @@ def compile_model(train_ds, val_ds, all_features, all_inputs):
     model.compile("adam", "binary_crossentropy", metrics=["accuracy"])
     model.fit(train_ds, epochs=80, validation_data=val_ds)
     model.summary()
-    # keras.utils.plot_model(model, to_file="accel-keras.png", show_shapes=True, rankdir="LR")
+    keras.utils.plot_model(model, to_file="accel-keras.png", show_shapes=True, rankdir="LR")
     os.chdir('../../../')
     model.save('models/saved/accel-model/keras')
     return model
@@ -115,29 +115,20 @@ def run_tflite_accel_model(tflite_file, accel_input):
     return 1 if prediction >= 0.5 else 0
 
 
-def test_model(model):
-    test_df = pd.read_csv("test.csv", delimiter=',')
-    positive_row = test_df[test_df['label'] == 1].drop(test_df.columns[[0, 1]], axis=1)
-    negative_row = test_df[test_df['label'] == 0].drop(test_df.columns[[0, 1]], axis=1)
-    positive_item = positive_row.to_dict(orient='records').pop()
-    negative_item = negative_row.to_dict(orient='records').pop()
-    input_dict = {name: tf.convert_to_tensor([value]) for name, value in negative_item.items()}
-    predictions = model.predict(input_dict)
-    print(predictions[0][0])
-
-
-if __name__ == '__main__':
-    # model = train_accel_keras_model()
-    # test_model(model)
-    # saved_model_to_tflite('models/saved/accel-model/keras/', 'accel-k', True)
-
+def test_accel_k_model():
     converted_model = "models/converted/accel-k.tflite"
     test_df = pd.read_csv('datasets/accelerometer/accel-labeled/test.csv', delimiter=',')
     positive_example = test_df[test_df['label'] == 1].drop(test_df.columns[[0, 1]], axis=1)
     negative_example = test_df[test_df['label'] == 0].drop(test_df.columns[[0, 1]], axis=1)
-
     prediction = run_tflite_accel_model(converted_model, negative_example)
     if prediction == 1:
         print("Drunk")
     else:
         print("Sober")
+
+
+if __name__ == '__main__':
+    # model = train_accel_keras_model()
+    # saved_model_to_tflite('models/saved/accel-model/keras/', 'accel-k', False)
+
+    test_accel_k_model()

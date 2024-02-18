@@ -4,6 +4,8 @@ import cv2
 import os
 import glob
 
+# os.chdir('../../datasets/DrunkImagesWebp')
+
 os.chdir('previous-projects/SoBr/DrunkImagesWebp')
 
 count = 1

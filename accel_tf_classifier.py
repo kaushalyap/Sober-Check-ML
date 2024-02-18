@@ -8,7 +8,6 @@ import numpy as np
 from tensorflow import keras
 from accel_features import FeatureSet
 from convert_to_tflite import saved_model_to_tflite
-from test_models import run_tflite_accel_model
 
 
 def df_to_dataset(dataframe, shuffle=True, batch_size=32):
@@ -78,7 +77,7 @@ def compile_train_model(train_ds, val_ds, test_ds, feature_columns):
     model.fit(train_ds,
               validation_data=val_ds,
               epochs=80)
-    model.summary()
+    # model.summary()
     # keras.utils.plot_model(model, to_file="accel-tf.png", show_shapes=True, rankdir="LR")
 
     loss, accuracy = model.evaluate(test_ds)
@@ -86,28 +85,40 @@ def compile_train_model(train_ds, val_ds, test_ds, feature_columns):
     return model
 
 
-# test_df = pd.read_csv("test.csv", delimiter=',')
-# positive_row = test_df[test_df['label'] == 1].drop(test_df.columns[[0, 1]], axis=1)
-# negative_row = test_df[test_df['label'] == 0].drop(test_df.columns[[0, 1]], axis=1)
-#
-#
-# positive_item = positive_row.to_dict(orient='records').pop()
-# negative_item = negative_row.to_dict(orient='records').pop()
-#
-#
-# input_dict = {name: tf.convert_to_tensor([value]) for name, value in negative_item.items()}
-# predictions = model.predict(input_dict)
-#
-# print(predictions[0][0])
+def run_tflite_accel_model(tflite_file, accel_input):
+    interpreter = tf.lite.Interpreter(model_path=str(tflite_file))
+    interpreter.allocate_tensors()
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    # print(f'Input Details : {input_details}')
+    # print(f'Output Details : {output_details[0]["index"]}')
+    print(accel_input.shape)
+    for feature in FeatureSet:
+        input_data = np.array(accel_input[feature.name], dtype=np.float64).reshape(1, 1)
+        print(f'Input Details shape : {input_details[feature.value]["shape"]}')
+        print(f'Input Data shape : {input_data.shape}, Input Type : {type(input_data)}')
+        interpreter.set_tensor(input_details[feature.value]["index"], input_data)
 
-if __name__ == '__main__':
-    # train_accel_tf_model()
-    # saved_model_to_tflite('models/saved/accel-model/tf/', 'accel', False)
+    interpreter.invoke()
+    prediction = interpreter.get_tensor(output_details[0]["index"])
+    print(prediction)
+    return 1 if prediction >= 0.5 else 0
 
+
+def test_accel_tf_model():
     converted_model = "models/converted/accel.tflite"
     test_df = pd.read_csv('datasets/accelerometer/accel-labeled/test.csv', delimiter=',')
     positive_example = test_df[test_df['label'] == 1].drop(test_df.columns[[0, 1]], axis=1)
     negative_example = test_df[test_df['label'] == 0].drop(test_df.columns[[0, 1]], axis=1)
-
     prediction = run_tflite_accel_model(converted_model, positive_example)
-    # print(prediction)
+    if prediction == 1:
+        print("Drunk")
+    else:
+        print("Sober")
+
+
+if __name__ == '__main__':
+    # train_accel_tf_model()
+    # saved_model_to_tflite('models/saved/accel-model/tf/', 'accel', True)
+
+    test_accel_tf_model()
